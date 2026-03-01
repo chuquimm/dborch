@@ -5,18 +5,15 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-Centralized database orchestrator for local development. One `docker compose up` to rule them all.
+A single stack to manage all your development databases.
 
 ## Why
 
-Running separate MySQL/PostgreSQL instances per project wastes resources and creates port conflicts. **dborch** consolidates all database services into a single compose stack that starts automatically with Docker Desktop.
+Every project needs a database. Some need two. Before long you're juggling multiple MySQL and PostgreSQL instances, each with its own port, its own credentials, its own way of starting up. You remember the `mysqldump` flags for one project but not the `pg_dump` flags for another. Pulling production data to debug a local issue means cobbling together SSH tunnels, dump commands, and restore scripts from memory every time.
 
-## Prerequisites
+**dborch** started as a way to consolidate all of that into a single Docker Compose stack — one `docker compose up` instead of five. But the real goal is broader: a tool that makes database management across projects feel simple and predictable, whether you're spinning up a local instance, backing up before a migration, or pulling production data to reproduce a bug.
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Mac, Windows, or Linux)
-- Docker Compose V2 (included with Docker Desktop)
-
-> **Apple Silicon (M1/M2/M3/M4)**: Fully supported. The `mysql5-6` service uses `platform: linux/amd64` and runs via Rosetta emulation automatically.
+Today, dborch is the foundation — a well-structured Compose stack with health checks, structured labels, and sensible defaults. The CLI and automation tooling will come next, built on top of this base.
 
 ## Services
 
@@ -26,28 +23,30 @@ Running separate MySQL/PostgreSQL instances per project wastes resources and cre
 | `mysql5-6` | `mysql:5.6` | `127.0.0.1:3307` | `.db-data/mysql56/` |
 | `pg17` | `postgres:17` | `127.0.0.1:5432` | `.db-data/pg17/` |
 
-All services bind to `127.0.0.1` only (not exposed to the local network).
+All services bind to `127.0.0.1` only — not exposed to the local network.
 
-## Quick Start
+## Quick start
 
 ```bash
-# 1. Clone
+# Clone
 git clone https://github.com/YOUR_USER/dborch.git
 cd dborch
 
-# 2. Configure
+# Configure
 cp .env.example .env
 
-# 3. Start
+# Start
 docker compose up -d
 
-# 4. Verify
+# Verify
 docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 ```
 
-## Connecting from Docker containers
+## Connecting
 
-Applications running inside Docker containers connect via `host.docker.internal`:
+### From Docker containers
+
+Applications running inside Docker connect via `host.docker.internal`:
 
 ```yaml
 # In your project's docker-compose.yml
@@ -58,19 +57,12 @@ services:
       DB_PORT: 3306  # or 3307, 5432
 ```
 
-## Connecting from the host
-
-Connect directly to `127.0.0.1:PORT`:
+### From the host
 
 ```bash
-# MySQL 8.1
-mysql -h 127.0.0.1 -P 3306 -u root -p
-
-# MySQL 5.6
-mysql -h 127.0.0.1 -P 3307 -u root -p
-
-# PostgreSQL 17
-psql -h 127.0.0.1 -p 5432 -U postgres
+mysql -h 127.0.0.1 -P 3306 -u root -p       # MySQL 8.1
+mysql -h 127.0.0.1 -P 3307 -u root -p       # MySQL 5.6
+psql -h 127.0.0.1 -p 5432 -U postgres       # PostgreSQL 17
 ```
 
 ## Configuration
@@ -84,9 +76,9 @@ Copy `.env.example` to `.env` and adjust as needed:
 
 ## Customization
 
-### Adding project-specific metadata
+### Project metadata
 
-Create a `docker-compose.override.yml` (gitignored) to add labels or settings without modifying the base file:
+Create a `docker-compose.override.yml` (gitignored) to track which projects use which services:
 
 ```yaml
 services:
@@ -96,44 +88,25 @@ services:
       com.dborch.notes: "databases: my_app_dev, my_api_dev"
 ```
 
-Docker Compose merges this automatically.
+Docker Compose merges this automatically with the base file.
 
-### Adding new services
+### Adding services
 
-Add more database engines by extending `docker-compose.yml` or via the override file:
-
-```yaml
-services:
-  mongo7:
-    image: mongo:7
-    container_name: mongo7
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:27017:27017"
-    volumes:
-      - ./.db-data/mongo7:/data/db
-    labels:
-      com.dborch.service: "mongo7"
-      com.dborch.engine: "mongodb"
-      com.dborch.version: "7"
-```
+Extend the stack with additional database engines by adding services to `docker-compose.yml` or via the override file. Follow the existing pattern: bind to `127.0.0.1`, add a health check, include `com.dborch.*` labels, and mount data under `.db-data/`.
 
 ## Labels
 
 All services use structured labels under `com.dborch.*` for filtering and identification:
 
 ```bash
-# List all dborch services
-docker ps --filter "label=com.dborch.service"
-
-# Filter by engine
-docker ps --filter "label=com.dborch.engine=mysql"
+docker ps --filter "label=com.dborch.service"        # All dborch services
+docker ps --filter "label=com.dborch.engine=mysql"   # Filter by engine
 ```
 
 | Label | Description |
 |-------|-------------|
 | `com.dborch.service` | Service name |
-| `com.dborch.engine` | Database engine (mysql, postgresql, mongodb...) |
+| `com.dborch.engine` | Database engine (`mysql`, `postgresql`) |
 | `com.dborch.version` | Engine version |
 | `com.dborch.port` | Exposed host port |
 | `com.dborch.description` | Human-readable description |
@@ -144,18 +117,18 @@ docker ps --filter "label=com.dborch.engine=mysql"
 - **Health checks** on all services
 - **Log rotation** (10MB x 3 files per service)
 - **Graceful shutdown** (60s grace period)
-- **Localhost-only** binding (not exposed to the network)
+- **Localhost-only** binding
 - **Bind-mount volumes** for direct data access
 
-## Data Persistence
+## Data persistence
 
 All data is persisted via bind mounts in `.db-data/`:
 
 ```
 .db-data/
-├── mysql8/    # MySQL 8.1 data files
-├── mysql56/   # MySQL 5.6 data files
-└── pg17/      # PostgreSQL 17 data files
+├── mysql8/    # MySQL 8.1
+├── mysql56/   # MySQL 5.6
+└── pg17/      # PostgreSQL 17
 ```
 
 > **Warning**: `.db-data/` is gitignored. Back up your data separately.
@@ -168,18 +141,15 @@ All data is persisted via bind mounts in `.db-data/`:
 Error: Bind for 127.0.0.1:3306 failed: port is already allocated
 ```
 
-Another process is using the port. Find and stop it:
+Find and stop the conflicting process:
 
 ```bash
-# macOS/Linux
 lsof -i :3306
-
-# Then stop the conflicting process or change the port in docker-compose.yml
 ```
 
 ### `host.docker.internal` not resolving (Linux)
 
-`host.docker.internal` works out of the box on **Docker Desktop** (Mac/Windows). On native Linux Docker Engine, add this to your project's service:
+`host.docker.internal` works out of the box on Docker Desktop (Mac/Windows). On native Linux Docker Engine, add this to your project's service:
 
 ```yaml
 services:
@@ -190,38 +160,35 @@ services:
 
 ### Container exits immediately
 
-Check if `.env` file exists:
+Check if `.env` exists and inspect the logs:
 
 ```bash
-ls -la .env
-# If missing:
-cp .env.example .env
-```
-
-Check container logs for details:
-
-```bash
-docker logs mysql8-1
-docker logs mysql5-6
-docker logs pg17
+ls -la .env              # If missing: cp .env.example .env
+docker logs mysql8-1     # Check for errors
 ```
 
 ### Data lost after restart
 
-Data persists with `docker compose down` + `docker compose up`. Data is **only deleted** if you explicitly remove volumes:
+Data survives `docker compose down` + `docker compose up`. It is **only deleted** if you explicitly remove volumes:
 
 ```bash
-# This DELETES all data:
-docker compose down -v    # DON'T do this unless you mean it
-
-# This is safe:
-docker compose down       # stops containers, keeps data
-docker compose up -d      # starts containers, data intact
+docker compose down -v   # DELETES all data
+docker compose down      # Safe — stops containers, keeps data
 ```
 
 ### Slow performance on macOS
 
-Bind mounts on macOS Docker Desktop can be slower than native. If performance is an issue, check Docker Desktop settings: **Settings > Resources > CPU/Memory** and allocate more resources.
+Bind mounts on macOS Docker Desktop can be slower than native. Allocate more resources in **Docker Desktop > Settings > Resources**.
+
+## What's next
+
+dborch is heading toward becoming a CLI tool that wraps around this Compose stack. The direction includes:
+
+- **A `dborch` command** to manage services, create databases, and open interactive clients — without remembering engine-specific syntax.
+- **Backup and restore automation** — dump and restore databases with a single command, organized by project and date.
+- **Multi-environment support** — define connection profiles for dev, staging, and production, and pull remote data to local for debugging.
+- **A console dashboard** — live view of running services, health, disk usage, and project associations.
+- **More engines** — MongoDB and Redis support alongside MySQL and PostgreSQL.
 
 ## License
 
