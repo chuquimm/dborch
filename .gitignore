@@ -1,0 +1,18 @@
+# Database data (bind mounts)
+.db-data/
+
+# Environment (contains passwords)
+.env
+
+# SQL dumps
+dumps/
+
+# Docker Compose local overrides
+docker-compose.override.yml
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/

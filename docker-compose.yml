@@ -1,0 +1,117 @@
+# ============================================
+# dborch - Centralized Database Services
+# ============================================
+# Shared database instances for local development.
+#
+# Usage:
+#   docker compose up -d
+#
+# Services:
+#   mysql8-1  → 127.0.0.1:3306
+#   mysql5-6  → 127.0.0.1:3307
+#   pg17      → 127.0.0.1:5432
+#
+# Data persisted in .db-data/<service>/
+# Override with docker-compose.override.yml
+# ============================================
+
+services:
+  mysql8-1:
+    image: mysql:8.1
+    container_name: mysql8-1
+    restart: unless-stopped
+    stop_grace_period: 60s
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - ./.db-data/mysql8:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    healthcheck:
+      test: ["CMD-SHELL", "mysql -uroot -p$$MYSQL_ROOT_PASSWORD -e 'SHOW DATABASES;'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      com.dborch.service: "mysql8-1"
+      com.dborch.engine: "mysql"
+      com.dborch.version: "8.1"
+      com.dborch.port: "3306"
+      com.dborch.description: "MySQL 8.1 instance"
+
+  mysql5-6:
+    image: mysql:5.6
+    platform: linux/amd64
+    container_name: mysql5-6
+    restart: unless-stopped
+    stop_grace_period: 60s
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - ./.db-data/mysql56:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    healthcheck:
+      test: ["CMD-SHELL", "mysql -uroot -p$$MYSQL_ROOT_PASSWORD -e 'SHOW DATABASES;'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      com.dborch.service: "mysql5-6"
+      com.dborch.engine: "mysql"
+      com.dborch.version: "5.6"
+      com.dborch.port: "3307"
+      com.dborch.description: "MySQL 5.6 instance (legacy support)"
+
+  pg17:
+    image: postgres:17
+    container_name: pg17
+    restart: unless-stopped
+    stop_grace_period: 60s
+    shm_size: 128mb
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - ./.db-data/pg17:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      com.dborch.service: "pg17"
+      com.dborch.engine: "postgresql"
+      com.dborch.version: "17"
+      com.dborch.port: "5432"
+      com.dborch.description: "PostgreSQL 17 instance"
+
+  # adminer:
+  #   image: adminer
+  #   container_name: adminer
+  #   restart: unless-stopped
+  #   ports:
+  #     - "127.0.0.1:8080:8080"
+  #   labels:
+  #     com.dborch.service: "adminer"
+  #     com.dborch.description: "Database web UI"
