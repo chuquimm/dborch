@@ -3,6 +3,7 @@
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-4479A1?logo=mysql&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-47A248?logo=mongodb&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 A single stack to manage all your development databases.
@@ -22,6 +23,7 @@ Today, dborch is the foundation — a well-structured Compose stack with health 
 | `mysql8-1` | `mysql:8.1` | `127.0.0.1:3306` | `.db-data/mysql8/` |
 | `mysql5-6` | `mysql:5.6` | `127.0.0.1:3307` | `.db-data/mysql56/` |
 | `pg17` | `postgres:17` | `127.0.0.1:5432` | `.db-data/pg17/` |
+| `mongo8` | `mongo:8.0` | `127.0.0.1:27017` | `.db-data/mongo8/` |
 
 All services bind to `127.0.0.1` only — not exposed to the local network.
 
@@ -34,6 +36,8 @@ cd dborch
 
 # Configure
 cp .env.example .env
+openssl rand -base64 756 > .mongo-keyfile
+chmod 400 .mongo-keyfile
 
 # Start
 docker compose up -d
@@ -63,6 +67,7 @@ services:
 mysql -h 127.0.0.1 -P 3306 -u root -p       # MySQL 8.1
 mysql -h 127.0.0.1 -P 3307 -u root -p       # MySQL 5.6
 psql -h 127.0.0.1 -p 5432 -U postgres       # PostgreSQL 17
+mongosh -h 127.0.0.1 -u admin -p            # MongoDB 8.0
 ```
 
 ## Configuration
@@ -73,6 +78,7 @@ Copy `.env.example` to `.env` and adjust as needed:
 |----------|---------|-------------|
 | `MYSQL_ROOT_PASSWORD` | `root` | Root password for MySQL instances |
 | `POSTGRES_PASSWORD` | `postgres` | Superuser password for PostgreSQL |
+| `MONGO_ROOT_PASSWORD` | `mongo` | Root password for MongoDB |
 
 ## Customization
 
@@ -128,7 +134,8 @@ All data is persisted via bind mounts in `.db-data/`:
 .db-data/
 ├── mysql8/    # MySQL 8.1
 ├── mysql56/   # MySQL 5.6
-└── pg17/      # PostgreSQL 17
+├── pg17/      # PostgreSQL 17
+└── mongo8/    # MongoDB 8.0
 ```
 
 > **Warning**: `.db-data/` is gitignored. Back up your data separately.
