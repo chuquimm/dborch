@@ -29,7 +29,7 @@ All services bind to `127.0.0.1` only — not exposed to the local network.
 
 ```bash
 # Clone
-git clone https://github.com/YOUR_USER/dborch.git
+git clone https://github.com/chuquimm/dborch.git
 cd dborch
 
 # Configure
