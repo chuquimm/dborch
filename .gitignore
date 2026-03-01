@@ -4,6 +4,9 @@
 # Environment (contains passwords)
 .env
 
+# MongoDB replica set keyfile
+.mongo-keyfile
+
 # SQL dumps
 dumps/
 

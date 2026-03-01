@@ -10,6 +10,7 @@
 #   mysql8-1  → 127.0.0.1:3306
 #   mysql5-6  → 127.0.0.1:3307
 #   pg17      → 127.0.0.1:5432
+#   mongo8    → 127.0.0.1:27017
 #
 # Data persisted in .db-data/<service>/
 # Override with docker-compose.override.yml
@@ -105,6 +106,46 @@ services:
       com.dborch.version: "17"
       com.dborch.port: "5432"
       com.dborch.description: "PostgreSQL 17 instance"
+
+  mongo8:
+    image: mongo:8.0
+    container_name: mongo8
+    restart: unless-stopped
+    stop_grace_period: 60s
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - ./.db-data/mongo8:/data/db
+      - ./.mongo-keyfile:/etc/mongo/keyfile:ro
+    command: ["--replSet", "rs0", "--bind_ip_all", "--keyFile", "/etc/mongo/keyfile"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-mongo}
+    healthcheck:
+      test: >-
+        mongosh --quiet
+        -u $$MONGO_INITDB_ROOT_USERNAME
+        -p $$MONGO_INITDB_ROOT_PASSWORD
+        --authenticationDatabase admin
+        --eval "
+        try { var s = rs.status(); if (s.ok) quit(0); }
+        catch(e) { rs.initiate(); }
+        quit(1);"
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      com.dborch.service: "mongo8"
+      com.dborch.engine: "mongodb"
+      com.dborch.version: "8.0"
+      com.dborch.port: "27017"
+      com.dborch.description: "MongoDB 8.0 instance (replica set)"
 
   # adminer:
   #   image: adminer
